@@ -3,11 +3,22 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Camera/CameraComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 
 ARsCharacter::ARsCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
+	
+	// 視点を動かしてもキャラクターの体が直接追従しないようにし、体の向きは移動側で制御する。
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
+	
+	// 移動入力による加速度の方向へ体を向ける。カメラが向いている方向とは独立して旋回する。
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+	// 体の左右旋回を最大500度/秒にする。移動速度やマウス感度ではなく、体が向きを変える速さ。
+	GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f);
 	
 	// キャラクターのルート → スプリングアーム → カメラ、という親子関係を作る。
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -15,9 +26,14 @@ ARsCharacter::ARsCharacter()
 	// 標準のUE単位では400cm。FRotatorの引数はPitch（上下）、Yaw（左右）、Roll（傾き）の順。
 	CameraBoom->TargetArmLength = 400.0f;
 	CameraBoom->SetRelativeRotation(FRotator(-30.0f, 0.0f, 0.0f));
+	// 視点の回転はスプリングアームがControllerのControl Rotationに追従して受け持つ。
+	// Pitchを継承する設定では、上の-30度を加算するのではなく、Control RotationのPitchを使う。
+	CameraBoom->bUsePawnControlRotation = true;
 	
 	FollowBoom = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowBoom"));
 	FollowBoom->SetupAttachment(CameraBoom);
+	// カメラ自身はControl Rotationを直接使わず、親のスプリングアームの回転に従う。
+	FollowBoom->bUsePawnControlRotation = false;
 
 }
 
