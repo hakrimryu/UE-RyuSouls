@@ -1,0 +1,41 @@
+# Unreal Engine generated files
+/Binaries/
+/DerivedDataCache/
+/Intermediate/
+/Saved/
+
+# Plugin intermediates; keep plugin binaries that may be required by binary-only plugins
+/Plugins/**/Intermediate/
+
+# Local developer assets
+/Content/Developers/
+
+# IDE caches and personal settings
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.opendb
+*.sdf
+*.opensdf
+ipch/
+
+# Generated IDE project and solution files
+*.sln
+*.slnx
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.xcodeproj/
+*.xcworkspace/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Keep Source/, Config/, Content/, Build/, .uproject, .uplugin and .vsconfig.
+# Build/ may contain packaging resources that cannot be regenerated.
