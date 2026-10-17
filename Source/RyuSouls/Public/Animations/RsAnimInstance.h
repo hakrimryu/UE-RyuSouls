@@ -47,4 +47,9 @@ public:
 	virtual void NativeInitializeAnimation() override;
 	// アニメーションの更新ごとに、ABPで使用する移動データを更新する。
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
+
+public:
+	// アニメーションのResetMovementInput通知を受け、移動入力の復帰と行動状態の解除を要求する。
+	UFUNCTION()
+	void AnimNotify_ResetMovementInput();
 };

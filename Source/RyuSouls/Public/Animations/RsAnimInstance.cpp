@@ -1,4 +1,7 @@
 #include "Animations/RsAnimInstance.h"
+
+#include "Characters/RsCharacter.h"
+#include "Component/RsStateComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -47,4 +50,14 @@ void URsAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	
 	// Z方向の速度の正負ではなく、CharacterMovementの落下モードで判定する。ジャンプ上昇中もtrueになる。
 	bIsFalling = MovementComponent->IsFalling();
+}
+
+void URsAnimInstance::AnimNotify_ResetMovementInput()
+{
+	// 状態コンポーネントを持つARsCharacterが所有者の場合だけ復帰を要求する。
+	if (ARsCharacter* LocalCharacter = Cast<ARsCharacter>(GetOwningActor()))
+	{
+		// Durationの既定値0秒で遅延処理を予約し、その完了時に移動許可と状態解除をまとめて行う。
+		LocalCharacter->GetStateComponent()->ToggleMovementInput(true);
+	}
 }

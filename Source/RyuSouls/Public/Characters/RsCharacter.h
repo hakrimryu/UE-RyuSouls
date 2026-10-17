@@ -11,6 +11,7 @@ class UInputMappingContext;
 class UInputAction;
 class URsAttributeComponent;
 class URsPlayerHUDWidget;
+class URsStateComponent;
 
 UCLASS()
 class RYUSOULS_API ARsCharacter : public ACharacter
@@ -39,14 +40,17 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* LookAction;
 
-	// BPで割り当てるスプリント用Action。発火中の継続判定と入力終了を受け取る。
+	// BPで割り当てる共通Action。Triggeredでスプリント、Completedで終了、Canceledでローリングを処理する。
 	UPROPERTY(EditAnywhere, Category = "Input")
-	UInputAction* SprintAction;
+	UInputAction* SprintRollingAction;
 
 private:
-	// スプリントに使うスタミナの残量・消費・回復を管理する。
+	// スプリントとローリングに使うスタミナの残量・消費・回復を管理する。
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	URsAttributeComponent* AttributeComponent;
+
+	// 現在の行動状態と移動入力の許可を管理する。
+	URsStateComponent* StateComponent;
 
 protected:
 	// BP_RsCharacterで指定するHUDのクラス。URsPlayerHUDWidgetを継承するWBP_PlayerHUDを割り当てる。
@@ -65,6 +69,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Sprinting")
 	float NormalSpeed = 500.0f;
 
+protected:
+	// BPで割り当てるローリング用Montage。ResetMovementInput通知で移動入力を復帰させる。
+	UPROPERTY(EditAnywhere, Category = "Montages")
+	UAnimMontage* RollMontage;
+
 public:
 	ARsCharacter();
 
@@ -79,6 +88,10 @@ public:
 
 	// 入力を受け取る準備時に、各Actionと呼び出す関数を結び付ける。
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+
+public:
+	// AnimInstanceなどが行動状態と移動入力の許可を操作するための参照を返す。
+	FORCEINLINE URsStateComponent* GetStateComponent() const { return StateComponent; }
 
 protected:
 
@@ -95,4 +108,8 @@ protected:
 
 	// 通常の速度上限へ戻し、遅延付きのスタミナ回復を有効にする。
 	void StopSprint();
+
+	// スタミナが足りる場合に移動入力を制限し、ローリングの再生と状態更新を行う。
+	void Rolling();
+
 };

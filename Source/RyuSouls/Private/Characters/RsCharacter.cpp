@@ -2,9 +2,11 @@
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "RsGameplayTags.h"
 #include "Blueprint/UserWidget.h"
 #include "Camera/CameraComponent.h"
 #include "Component/RsAttributeComponent.h"
+#include "Component/RsStateComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "UI/RsPlayerHUDWidget.h"
@@ -44,6 +46,8 @@ ARsCharacter::ARsCharacter()
 
 	// スタミナの残量と回復タイマーをキャラクターごとのコンポーネントで管理する。
 	AttributeComponent = CreateDefaultSubobject<URsAttributeComponent>(	TEXT("Attribute"));
+	// 行動状態のタグと移動入力の許可をキャラクターごとに保持する。
+	StateComponent = CreateDefaultSubobject<URsStateComponent>(TEXT("State"));
 
 }
 
@@ -101,8 +105,10 @@ void ARsCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::Look);
 
 		// 発火中はスプリント条件を確認し、Completedで通常速度とスタミナ回復へ戻す。
-		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Triggered, this, &ThisClass::Sprinting);
-		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::StopSprint);
+		EnhancedInputComponent->BindAction(SprintRollingAction, ETriggerEvent::Triggered, this, &ThisClass::Sprinting);
+		EnhancedInputComponent->BindAction(SprintRollingAction, ETriggerEvent::Completed, this, &ThisClass::StopSprint);
+		// 同じActionのCanceledでローリングを開始する。通知の発生条件は入力アセットのTrigger設定に従う。
+		EnhancedInputComponent->BindAction(SprintRollingAction, ETriggerEvent::Canceled, this, &ThisClass::Rolling);
 	}
 
 }
@@ -120,6 +126,15 @@ bool ARsCharacter::IsMoving() const
 
 void ARsCharacter::Move(const FInputActionValue& Values)
 {
+	// 入力の許可判定に必須の、コンストラクタで生成したコンポーネントを確認する。
+	check(StateComponent);
+
+	// ローリングなどで入力を禁止している間は、新しい移動入力をCharacterMovementへ渡さない。
+	if (StateComponent->MovementInputEnabled() == false)
+	{
+		return;
+	}
+
 	// Actionの値を2Dベクトルとして取り出す。
 	// ここでのX/Yは「入力の横/縦」であり、UEのワールド座標のX/Yではない。
 	// 例：前=(0, 1)、右=(1, 0)、後ろ=(0, -1)になるようにMapping Context側で設定する。
@@ -185,4 +200,33 @@ void ARsCharacter::StopSprint()
 	// 入力終了または継続条件を満たさない場合の共通処理。回復タイマーが未開始なら2秒後に回復を始める。
 	GetCharacterMovement()->MaxWalkSpeed = NormalSpeed;
 	AttributeComponent->ToggleStaminaRegeneration(true, 2.0f);
+}
+
+void ARsCharacter::Rolling()
+{
+	// スタミナ消費と移動制限に必要な、生成済みコンポーネントを確認する。
+	check(AttributeComponent);
+	check(StateComponent);
+
+	// 15.0はローリング1回分の消費量。残量が足りない場合は開始しない。
+	if (AttributeComponent->CheckHasEnoughStamina(15.0f))
+	{
+		// 既存の回復タイマーを解除し、今回のローリングを基準に回復開始を設定し直す。
+		AttributeComponent->ToggleStaminaRegeneration(false);
+
+		// 移動入力の復帰はアニメーション側のResetMovementInput通知に委ねる。
+		StateComponent->ToggleMovementInput(false);
+
+		// 1回分をまとめて消費し、属性変更通知を通してHUDの残量にも反映する。
+		AttributeComponent->DecreaseStamina(15.0f);
+
+		// BPで割り当てたローリング用Montageを再生する。
+		PlayAnimMontage(RollMontage);
+
+		// 移動入力の復帰処理で解除するまで、現在の行動状態をローリングとして保持する。
+		StateComponent->SetState(RsGameplayTags::Character_State_Rolling);
+
+		// Montageの終了時刻とは独立して、1.5秒後からスタミナ回復を開始する。
+		AttributeComponent->ToggleStaminaRegeneration(true, 1.5f);
+	}
 }
