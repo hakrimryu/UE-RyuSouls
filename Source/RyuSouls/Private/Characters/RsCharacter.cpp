@@ -2,29 +2,31 @@
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Blueprint/UserWidget.h"
 #include "Camera/CameraComponent.h"
 #include "Component/RsAttributeComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "UI/RsPlayerHUDWidget.h"
 
 ARsCharacter::ARsCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	
+
 	// 視点を動かしてもキャラクターの体が直接追従しないようにし、体の向きは移動側で制御する。
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
-	
+
 	// 移動入力による加速度の方向へ体を向ける。カメラが向いている方向とは独立して旋回する。
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	// 体の左右旋回を最大500度/秒にする。移動速度やマウス感度ではなく、体が向きを変える速さ。
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f);
-	
+
 	// 通常移動の上限は500cm/秒、歩行時の制動減速度は2000cm/秒²。上限速度はスプリント時に切り替える。
 	GetCharacterMovement()->MaxWalkSpeed = 500.0f;
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.0f;
-	
+
 	// キャラクターのルート → スプリングアーム → カメラ、という親子関係を作る。
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
@@ -34,12 +36,12 @@ ARsCharacter::ARsCharacter()
 	// 視点の回転はスプリングアームがControllerのControl Rotationに追従して受け持つ。
 	// Pitchを継承する設定では、上の-30度を加算するのではなく、Control RotationのPitchを使う。
 	CameraBoom->bUsePawnControlRotation = true;
-	
+
 	FollowBoom = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowBoom"));
 	FollowBoom->SetupAttachment(CameraBoom);
 	// カメラ自身はControl Rotationを直接使わず、親のスプリングアームの回転に従う。
 	FollowBoom->bUsePawnControlRotation = false;
-	
+
 	// スタミナの残量と回復タイマーをキャラクターごとのコンポーネントで管理する。
 	AttributeComponent = CreateDefaultSubobject<URsAttributeComponent>(	TEXT("Attribute"));
 
@@ -48,13 +50,23 @@ ARsCharacter::ARsCharacter()
 void ARsCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	// BPで指定したHUDを開始時に生成する。クラス未指定時や生成失敗時は画面へ追加しない。
+	if (PlayerHUDWidgetClass)
+	{
+		PlayerHUDWidget = CreateWidget<URsPlayerHUDWidget>(GetWorld(), PlayerHUDWidgetClass);
+		if (PlayerHUDWidget)
+		{
+			PlayerHUDWidget->AddToViewport();
+		}
+	}
+
 }
 
 void ARsCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+
 	// スタミナと速度上限の確認用表示。同じキーのメッセージを毎フレーム更新する。
 	GEngine->AddOnScreenDebugMessage(0, 1.5f, FColor::Cyan, FString::Printf(TEXT("Stamina: %f"), AttributeComponent->GetBaseStamina()));
 	GEngine->AddOnScreenDebugMessage(2, 1.5f, FColor::Cyan, FString::Printf(TEXT("MaxWalkSpeed: %f"), GetCharacterMovement()->MaxWalkSpeed));
@@ -79,7 +91,7 @@ void ARsCharacter::NotifyControllerChanged()
 void ARsCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-	
+
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		// Actionと呼び出す処理を結び付ける。thisが呼び出し先、&クラス名::関数名が処理。
@@ -87,7 +99,7 @@ void ARsCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		// ThisClassはこのUCLASSを指す別名なので、ここではARsCharacterと同じクラスを指す。
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::Move);
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::Look);
-		
+
 		// 発火中はスプリント条件を確認し、Completedで通常速度とスタミナ回復へ戻す。
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Triggered, this, &ThisClass::Sprinting);
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::StopSprint);
@@ -119,7 +131,7 @@ void ARsCharacter::Move(const FInputActionValue& Values)
 		const FRotator Rotation = Controller->GetControlRotation();
 		// 地面に沿って移動したいので、上下の傾きと横倒しを捨て、左右の向き（Yaw）だけを使う。
 		const FRotator YawRotation(0, Rotation.Yaw, 0);
-		
+
 		// UEのローカル軸はX=前、Y=右、Z=上。
 		// FRotationMatrixはその軸をYaw方向へ回し、GetUnitAxisでワールド空間の長さ1の方向を取り出す。
 		// EAxis::X/Yは回転させる前のローカル軸を選ぶ指定であり、MovementVector.X/Yとは別の意味。
@@ -134,7 +146,7 @@ void ARsCharacter::Move(const FInputActionValue& Values)
 		// この値は移動距離ではないので、ここでDeltaTimeを掛ける必要はない。
 		AddMovementInput(ForwardVector, MovementVector.Y);
 		AddMovementInput(RightVector, MovementVector.X);
-		
+
 	}
 }
 
@@ -142,7 +154,7 @@ void ARsCharacter::Look(const FInputActionValue& Values)
 {
 	// 視点用Actionの2D値。Yの正負や感度はMapping ContextのModifierなどの設定にも左右される。
 	FVector2D LookDirection = Values.Get<FVector2D>();
-	
+
 	if (Controller != nullptr)
 	{
 		// 横入力X → 左右回転Yaw、縦入力Y → 上下回転Pitch。位置ではなくControllerの操作方向を変える。
@@ -174,4 +186,3 @@ void ARsCharacter::StopSprint()
 	GetCharacterMovement()->MaxWalkSpeed = NormalSpeed;
 	AttributeComponent->ToggleStaminaRegeneration(true, 2.0f);
 }
-
