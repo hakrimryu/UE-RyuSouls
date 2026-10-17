@@ -3,6 +3,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Camera/CameraComponent.h"
+#include "Component/RsAttributeComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 
@@ -20,6 +21,10 @@ ARsCharacter::ARsCharacter()
 	// 体の左右旋回を最大500度/秒にする。移動速度やマウス感度ではなく、体が向きを変える速さ。
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f);
 	
+	// 通常移動の上限は500cm/秒、歩行時の制動減速度は2000cm/秒²。上限速度はスプリント時に切り替える。
+	GetCharacterMovement()->MaxWalkSpeed = 500.0f;
+	GetCharacterMovement()->BrakingDecelerationWalking = 2000.0f;
+	
 	// キャラクターのルート → スプリングアーム → カメラ、という親子関係を作る。
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
@@ -34,6 +39,9 @@ ARsCharacter::ARsCharacter()
 	FollowBoom->SetupAttachment(CameraBoom);
 	// カメラ自身はControl Rotationを直接使わず、親のスプリングアームの回転に従う。
 	FollowBoom->bUsePawnControlRotation = false;
+	
+	// スタミナの残量と回復タイマーをキャラクターごとのコンポーネントで管理する。
+	AttributeComponent = CreateDefaultSubobject<URsAttributeComponent>(	TEXT("Attribute"));
 
 }
 
@@ -46,7 +54,10 @@ void ARsCharacter::BeginPlay()
 void ARsCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	
+	// スタミナと速度上限の確認用表示。同じキーのメッセージを毎フレーム更新する。
+	GEngine->AddOnScreenDebugMessage(0, 1.5f, FColor::Cyan, FString::Printf(TEXT("Stamina: %f"), AttributeComponent->GetBaseStamina()));
+	GEngine->AddOnScreenDebugMessage(2, 1.5f, FColor::Cyan, FString::Printf(TEXT("MaxWalkSpeed: %f"), GetCharacterMovement()->MaxWalkSpeed));
 }
 
 void ARsCharacter::NotifyControllerChanged()
@@ -75,9 +86,24 @@ void ARsCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		// TriggeredはActionの発火条件を満たしたときの通知。発火頻度はアセットのTrigger設定による。
 		// ThisClassはこのUCLASSを指す別名なので、ここではARsCharacterと同じクラスを指す。
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::Move);
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ARsCharacter::Look);
+		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::Look);
+		
+		// 発火中はスプリント条件を確認し、Completedで通常速度とスタミナ回復へ戻す。
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Triggered, this, &ThisClass::Sprinting);
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::StopSprint);
 	}
 
+}
+
+bool ARsCharacter::IsMoving() const
+{
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		// 水平速度が3cm/秒を超え、移動入力による加速度もある場合に限る。惰性移動だけではスプリントしない。
+		return MovementComponent->Velocity.Size2D() > 3.0f && MovementComponent->GetCurrentAcceleration() != FVector::Zero();
+	}
+
+	return false;
 }
 
 void ARsCharacter::Move(const FInputActionValue& Values)
@@ -124,5 +150,28 @@ void ARsCharacter::Look(const FInputActionValue& Values)
 		AddControllerYawInput(LookDirection.X);
 		AddControllerPitchInput(LookDirection.Y);
 	}
+}
+
+void ARsCharacter::Sprinting()
+{
+	// 5.0は継続を許可する残量の閾値で、1回の消費量ではない。移動中のみ回復を止めて速度上限を上げる。
+	if (AttributeComponent->CheckHasEnoughStamina(5.0f) && IsMoving())
+	{
+		AttributeComponent->ToggleStaminaRegeneration(false);
+		GetCharacterMovement()->MaxWalkSpeed = SprintingSpeed;
+		// 消費量はこの関数の呼び出し1回につき0.1。秒単位ではなく、入力Actionの発火頻度に依存する。
+		AttributeComponent->DecreaseStamina(0.1f);
+	}
+	else
+	{
+		StopSprint();
+	}
+}
+
+void ARsCharacter::StopSprint()
+{
+	// 入力終了または継続条件を満たさない場合の共通処理。回復タイマーが未開始なら2秒後に回復を始める。
+	GetCharacterMovement()->MaxWalkSpeed = NormalSpeed;
+	AttributeComponent->ToggleStaminaRegeneration(true, 2.0f);
 }
 
