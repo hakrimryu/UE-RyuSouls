@@ -6,7 +6,7 @@
 
 class ARsWeapon;
 
-// キャラクターの装備管理用コンポーネント。現在は主武器の参照を保持する。
+// キャラクターの主武器を保持し、交換時には以前の武器をPickupとしてワールドへ戻す。
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class RYUSOULS_API URsCombatComponent : public UActorComponent
 {
@@ -27,6 +27,6 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 public:
-	// 主武器の参照だけを更新する。生成やソケットへの取り付けは行わない。
+	// 以前の主武器があれば同じ装備クラスのPickupへ置き換え、新しい参照を登録する。取り付けは武器側が行う。
 	void SetWeapon(ARsWeapon* NewWeapon);
 };

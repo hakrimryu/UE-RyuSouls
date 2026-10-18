@@ -18,9 +18,9 @@ void ARsWeapon::EquipItem()
 
 	if (CombatComponent)
 	{
-		// 登録先がある場合だけ、主武器として保持させて装備用ソケットへ取り付ける。
+		// 以前の武器を落として自身を主武器に登録し、拾得直後は収納用ソケットへ取り付ける。
 		CombatComponent->SetWeapon(this);
-		AttachToOwner(EquipSocketName);
+		AttachToOwner(UnequipSocketName);
 	}
 }
 

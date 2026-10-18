@@ -11,11 +11,11 @@ class RYUSOULS_API ARsWeapon : public ARsEquipment
 	GENERATED_BODY()
 
 protected:
-	// 装備時の取り付け先。所有キャラクターのSkeletalMesh上のソケット名をBPで指定する。
+	// 抜刀時の取り付け先として用意した名前。現在の拾得処理では使わず、手側のソケット名をBPで指定する。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment | Socket")
 	FName EquipSocketName;
 
-	// 装備解除時の取り付け先として用意した名前。現在のUnEquipItemではまだ使用しない。
+	// 拾得直後の収納先。現在はEquipItemでこのソケットへ取り付け、UnEquipItemはまだ切り替えを行わない。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment | Socket")
 	FName UnequipSocketName;
 
@@ -29,7 +29,7 @@ public:
 	ARsWeapon();
 
 public:
-	// OwnerのCombatComponentに自身を登録し、装備用ソケットへ取り付ける。呼び出し前にOwnerを設定する。
+	// OwnerのCombatComponentに自身を登録し、収納用ソケットへ取り付ける。呼び出し前にOwnerを設定する。
 	virtual void EquipItem() override;
 
 	// 装備解除処理の入口。現在は基底処理のみで、参照の解除やソケットの切り替えは未実装。
