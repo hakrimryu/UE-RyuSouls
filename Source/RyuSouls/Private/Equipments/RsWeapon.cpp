@@ -2,15 +2,26 @@
 
 #include "RsGameplayTags.h"
 #include "Component/RsCombatComponent.h"
+#include "Component/RsWeaponCollisionComponent.h"
 #include "Data/RsMontageActionData.h"
+#include "Kismet/GameplayStatics.h"
 
 ARsWeapon::ARsWeapon()
 {
+	// 命中判定を武器ごとに保持し、検出結果をこの武器のダメージ処理へ接続する。
+	WeaponCollision = CreateDefaultSubobject<URsWeaponCollisionComponent>("WeaponCollision");
+	WeaponCollision->OnHitActor.AddUObject(this, &ThisClass::OnHitActor);
+
 	// 攻撃1回あたりの消費量。実行可否の確認と再生開始時の消費に同じ値を使う。
-	StaminaCostMap.Add(RsGameplayTags::Character_Attack_Light, 7.f);
-	StaminaCostMap.Add(RsGameplayTags::Character_Attack_Running, 12.f);
-	StaminaCostMap.Add(RsGameplayTags::Character_Attack_Special, 15.f);
-	StaminaCostMap.Add(RsGameplayTags::Character_Attack_Heavy, 20.f);
+	StaminaCostMap.Add(RsGameplayTags::Character_Attack_Light, 7.0f);
+	StaminaCostMap.Add(RsGameplayTags::Character_Attack_Running, 12.0f);
+	StaminaCostMap.Add(RsGameplayTags::Character_Attack_Special, 15.0f);
+	StaminaCostMap.Add(RsGameplayTags::Character_Attack_Heavy, 20.0f);
+
+	// 通常攻撃は基礎値、強攻撃・走行攻撃は1.8倍、特殊攻撃は2.1倍を既定値にする。
+	DamageMultiplierMap.Add(RsGameplayTags::Character_Attack_Heavy, 1.8f);
+	DamageMultiplierMap.Add(RsGameplayTags::Character_Attack_Running, 1.8f);
+	DamageMultiplierMap.Add(RsGameplayTags::Character_Attack_Special, 2.1f);
 }
 
 void ARsWeapon::EquipItem()
@@ -32,6 +43,12 @@ void ARsWeapon::EquipItem()
 
 		const FName AttachSocket = CombatComponent->IsCombatEnabled() ? EquipSocketName : UnequipSocketName;
 		AttachToOwner(AttachSocket);
+
+		// 装備の表示メッシュをソケット位置の取得元として登録する。
+		WeaponCollision->SetWeaponMesh(Mesh);
+
+		// 武器自身に加え、所有キャラクターにも自分の攻撃が命中しないよう検索から除外する。
+		WeaponCollision->AddIgnoredActor(GetOwner());
 	}
 }
 
@@ -48,4 +65,42 @@ float ARsWeapon::GetStaminaCost(const FGameplayTag& InTag) const
 		return StaminaCostMap[InTag];
 	}
 	return 0.f;
+}
+
+float ARsWeapon::GetAttackDamage() const
+{
+	if (const AActor* OwnerActor = GetOwner())
+	{
+		const FGameplayTag LastAttackType = CombatComponent->GetLastAttackType();
+
+		// 実行済みの攻撃タグに倍率がある場合だけ適用し、それ以外は基礎値を返す。
+		if (DamageMultiplierMap.Contains(LastAttackType))
+		{
+			const float Multiplier = DamageMultiplierMap[LastAttackType];
+			return BaseDamage * Multiplier;
+		}
+	}
+
+	return BaseDamage;
+}
+
+void ARsWeapon::OnHitActor(const FHitResult& Hit)
+{
+	AActor* TargetActor = Hit.GetActor();
+
+	// PointDamageの方向には、衝突面の法線ではなく攻撃者の正面方向を渡す。
+	FVector DamageDirection = GetOwner()->GetActorForwardVector();
+
+	// 直前の攻撃種別に対応する武器の基礎ダメージと倍率から算出する。
+	float AttackDamage = GetAttackDamage();
+
+	// Instigatorは攻撃者のController、DamageCauserはこの武器として命中結果を通知する。
+	UGameplayStatics::ApplyPointDamage(
+		TargetActor,
+		AttackDamage,
+		DamageDirection,
+		Hit,
+		GetOwner()->GetInstigatorController(),
+		this,
+		nullptr);
 }
