@@ -49,6 +49,9 @@ ARsCharacter::ARsCharacter()
 	// 行動状態のタグと移動入力の許可をキャラクターごとに保持する。
 	StateComponent = CreateDefaultSubobject<URsStateComponent>(TEXT("State"));
 
+	// 装備側が主武器を登録できるよう、キャラクターごとに保持先を生成する。
+	CombatComponent = CreateDefaultSubobject<URsCombatComponent>(TEXT("Combat"));
+
 }
 
 void ARsCharacter::BeginPlay()

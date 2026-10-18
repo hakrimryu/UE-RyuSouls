@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Component/RsCombatComponent.h"
 #include "GameFramework/Character.h"
 #include "RsCharacter.generated.h"
 
@@ -50,7 +51,12 @@ private:
 	URsAttributeComponent* AttributeComponent;
 
 	// 現在の行動状態と移動入力の許可を管理する。
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	URsStateComponent* StateComponent;
+
+	// このキャラクターが装備する主武器の参照を保持する。
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	URsCombatComponent* CombatComponent;
 
 protected:
 	// BP_RsCharacterで指定するHUDのクラス。URsPlayerHUDWidgetを継承するWBP_PlayerHUDを割り当てる。
