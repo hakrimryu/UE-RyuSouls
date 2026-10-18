@@ -14,4 +14,10 @@ namespace RsGameplayTags
 	// DataAssetのMontage検索と、AnimNotifyの抜刀・納刀判定で共用するアクションタグ。
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Character_Action_Equip);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Character_Action_Unequip);
+
+	// 入力・武器の消費量・DataAssetのMontage群を対応付ける攻撃種別。
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Character_Attack_Light);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Character_Attack_Running);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Character_Attack_Special);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Character_Attack_Heavy);
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Components/ActorComponent.h"
 #include "RsCombatComponent.generated.h"
 
@@ -20,6 +21,10 @@ protected:
 	// 主武器を抜刀しているか。装備・解除のAnimNotifyで更新し、拾得時の取り付け先にも使う。
 	UPROPERTY(EditAnywhere)
 	bool bCombatEnabled = false;
+
+	// 最後に実行した攻撃種別。ComboWindow終了時も同じタグのMontage群で次段を選ぶ。
+	UPROPERTY(VisibleAnywhere)
+	FGameplayTag LastAttackType;
 
 public:
 	URsCombatComponent();
@@ -42,4 +47,9 @@ public:
 
 	// キャラクターのMontage選択とAnimNotifyの取り付け処理で使う現在の主武器。
 	FORCEINLINE ARsWeapon* GetMainWeapon() const { return MainWeapon; }
+
+	// 予約入力からコンボを継続する際の攻撃種別を返す。
+	FORCEINLINE FGameplayTag GetLastAttackType() const { return LastAttackType; };
+	// 攻撃開始時に選択したタグを、次段のMontage選択用に保持する。
+	FORCEINLINE void SetLastAttackType(const FGameplayTag& NewAttackTypeTag) { LastAttackType = NewAttackTypeTag; };
 };

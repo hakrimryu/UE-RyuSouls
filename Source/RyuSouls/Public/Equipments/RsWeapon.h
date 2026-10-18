@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Equipments/RsEquipment.h"
 #include "RsWeapon.generated.h"
 
@@ -31,6 +32,10 @@ protected:
 	UPROPERTY()
 	URsCombatComponent* CombatComponent;
 
+protected:
+	// 攻撃タグごとの1回分のスタミナ消費量。武器BPで既定値を調整できる。
+	UPROPERTY(EditAnywhere)
+	TMap<FGameplayTag, float> StaminaCostMap;
 
 public:
 	ARsWeapon();
@@ -41,6 +46,9 @@ public:
 
 	// 指定タグのMontage群からIndex番目を返す。通常の装備切り替えでは既定の0番目を使う。
 	UAnimMontage* GetMontageForTag(const FGameplayTag& Tag, const int32 Index = 0) const;
+
+	// 指定攻撃の消費量を返す。未登録のタグは消費量0として扱う。
+	float GetStaminaCost(const FGameplayTag& InTag) const;
 
 	// AnimNotifyが抜刀・納刀の取り付け先を選ぶためのソケット名。
 	FORCEINLINE FName GetEquipSocketName() const { return EquipSocketName; }

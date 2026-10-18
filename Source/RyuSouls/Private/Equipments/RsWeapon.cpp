@@ -1,10 +1,16 @@
 #include "Equipments/RsWeapon.h"
 
+#include "RsGameplayTags.h"
 #include "Component/RsCombatComponent.h"
 #include "Data/RsMontageActionData.h"
 
 ARsWeapon::ARsWeapon()
 {
+	// 攻撃1回あたりの消費量。実行可否の確認と再生開始時の消費に同じ値を使う。
+	StaminaCostMap.Add(RsGameplayTags::Character_Attack_Light, 7.f);
+	StaminaCostMap.Add(RsGameplayTags::Character_Attack_Running, 12.f);
+	StaminaCostMap.Add(RsGameplayTags::Character_Attack_Special, 15.f);
+	StaminaCostMap.Add(RsGameplayTags::Character_Attack_Heavy, 20.f);
 }
 
 void ARsWeapon::EquipItem()
@@ -33,4 +39,13 @@ UAnimMontage* ARsWeapon::GetMontageForTag(const FGameplayTag& Tag, const int32 I
 {
 	// 武器BPに割り当てたDataAssetへ検索を委ね、キャラクター側に個別のMontage参照を持たせない。
 	return MontageActionData->GetMontageForTag(Tag, Index);
+}
+
+float ARsWeapon::GetStaminaCost(const FGameplayTag& InTag) const
+{
+	if (StaminaCostMap.Contains(InTag))
+	{
+		return StaminaCostMap[InTag];
+	}
+	return 0.f;
 }

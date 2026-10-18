@@ -57,7 +57,6 @@ ARsCharacter::ARsCharacter()
 
 	// 装備側が主武器を登録できるよう、キャラクターごとに保持先を生成する。
 	CombatComponent = CreateDefaultSubobject<URsCombatComponent>(TEXT("Combat"));
-
 }
 
 void ARsCharacter::BeginPlay()
@@ -73,7 +72,6 @@ void ARsCharacter::BeginPlay()
 			PlayerHUDWidget->AddToViewport();
 		}
 	}
-
 }
 
 void ARsCharacter::Tick(float DeltaTime)
@@ -124,6 +122,15 @@ void ARsCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 		// Rキーの押下開始ごとに抜刀・納刀を要求し、長押しによる連続切り替えを防ぐ。
 		EnhancedInputComponent->BindAction(ToggleCombatAction, ETriggerEvent::Started, this, &ThisClass::ToggleCombat);
+
+		// 押下開始時に抜刀を要求する。抜刀Montage中は攻撃の実行条件で入力を抑止する。
+		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ThisClass::AutoToggleCombat);
+		// IA_AttackのHold成立前に離した入力を、通常攻撃または走行攻撃として扱う。
+		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Canceled, this, &ThisClass::Attack);
+		// 0.7秒のHoldが成立すると特殊攻撃を1回だけ要求する。
+		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &ThisClass::SpecialAttack);
+		// IA_ShiftとのChord条件を満たした入力開始時に強攻撃を要求する。
+		EnhancedInputComponent->BindAction(HeavyAttackAction, ETriggerEvent::Started, this, &ThisClass::HeavyAttack);
 	}
 }
 
@@ -149,6 +156,31 @@ bool ARsCharacter::CanToggleCombat() const
 	CheckTags.AddTag(RsGameplayTags::Character_State_GeneralAction);
 
 	return StateComponent->IsCurrentStateEqualToAny(CheckTags) == false;
+}
+
+bool ARsCharacter::CanPerformAttack(const FGameplayTag& AttackTypeTag) const
+{
+	// 攻撃条件と消費量を参照するため、キャラクターに必須のコンポーネントを確認する。
+	check(StateComponent)
+	check(CombatComponent)
+	check(AttributeComponent)
+
+	// 武器未装備時はDataAssetとスタミナ消費量を参照できないため攻撃しない。
+	if (IsValid(CombatComponent->GetMainWeapon()) == false)
+	{
+		return false;
+	}
+
+	FGameplayTagContainer CheckTags;
+	CheckTags.AddTag(RsGameplayTags::Character_State_Rolling);
+	CheckTags.AddTag(RsGameplayTags::Character_State_GeneralAction);
+
+	const float StaminaCost = CombatComponent->GetMainWeapon()->GetStaminaCost(AttackTypeTag);
+
+	// 攻撃中は除外せず、入力の予約可否はコンボ処理側で判定する。
+	return StateComponent->IsCurrentStateEqualToAny(CheckTags) == false
+		&& CombatComponent->IsCombatEnabled()
+		&& AttributeComponent->CheckHasEnoughStamina(StaminaCost);
 }
 
 void ARsCharacter::Move(const FInputActionValue& Values)
@@ -215,6 +247,8 @@ void ARsCharacter::Sprinting()
 		GetCharacterMovement()->MaxWalkSpeed = SprintingSpeed;
 		// 消費量はこの関数の呼び出し1回につき0.1。秒単位ではなく、入力Actionの発火頻度に依存する。
 		AttributeComponent->DecreaseStamina(0.1f);
+
+		bSprinting = true;
 	}
 	else
 	{
@@ -227,6 +261,7 @@ void ARsCharacter::StopSprint()
 	// 入力終了または継続条件を満たさない場合の共通処理。回復タイマーが未開始なら2秒後に回復を始める。
 	GetCharacterMovement()->MaxWalkSpeed = NormalSpeed;
 	AttributeComponent->ToggleStaminaRegeneration(true, 2.0f);
+	bSprinting = false;
 }
 
 void ARsCharacter::Rolling()
@@ -296,7 +331,6 @@ void ARsCharacter::Interact()
 			}
 		}
 	}
-
 }
 
 void ARsCharacter::ToggleCombat()
@@ -325,4 +359,166 @@ void ARsCharacter::ToggleCombat()
 			}
 		}
 	}
+}
+
+void ARsCharacter::AutoToggleCombat()
+{
+	// 抜刀の要求だけを行い、完了後に攻撃を自動再開する入力は保持しない。
+	if (CombatComponent)
+	{
+		if (!CombatComponent->IsCombatEnabled())
+		{
+			ToggleCombat();
+		}
+	}
+}
+
+void ARsCharacter::Attack()
+{
+	const FGameplayTag AttackTypeTag = GetAttackPerform();
+
+	if (CanPerformAttack(AttackTypeTag))
+	{
+		ExecuteComboAttack(AttackTypeTag);
+	}
+}
+
+void ARsCharacter::SpecialAttack()
+{
+	const FGameplayTag AttackTypeTag = RsGameplayTags::Character_Attack_Special;
+
+	if (CanPerformAttack(AttackTypeTag))
+	{
+		ExecuteComboAttack(AttackTypeTag);
+	}
+}
+
+void ARsCharacter::HeavyAttack()
+{
+	AutoToggleCombat();
+
+	const FGameplayTag AttackTypeTag = RsGameplayTags::Character_Attack_Heavy;
+
+	if (CanPerformAttack(AttackTypeTag))
+	{
+		ExecuteComboAttack(AttackTypeTag);
+	}
+}
+
+FGameplayTag ARsCharacter::GetAttackPerform() const
+{
+	if (IsSprinting())
+	{
+		return RsGameplayTags::Character_Attack_Running;
+	}
+
+	return RsGameplayTags::Character_Attack_Light;
+}
+
+void ARsCharacter::DoAttack(const FGameplayTag& AttackTypeTag)
+{
+	check(StateComponent)
+	check(AttributeComponent)
+	check(CombatComponent)
+
+	if (const ARsWeapon* Weapon = CombatComponent->GetMainWeapon())
+	{
+		// 攻撃中は新しい移動入力を止め、Notifyで次段へ進む際の攻撃種別を保持する。
+		StateComponent->SetState(RsGameplayTags::Character_State_Attacking);
+		StateComponent->ToggleMovementInput(false);
+		CombatComponent->SetLastAttackType(AttackTypeTag);
+
+		AttributeComponent->ToggleStaminaRegeneration(false);
+
+		UAnimMontage* Montage = Weapon->GetMontageForTag(AttackTypeTag, ComboCounter);
+		if (!Montage)
+		{
+			// 段数に対応するMontageがなければ先頭へ戻す。タグ自体が未登録なら再取得もnullptrになる。
+			ComboCounter = 0;
+			Montage = Weapon->GetMontageForTag(AttackTypeTag, ComboCounter);
+		}
+
+		PlayAnimMontage(Montage);
+
+		const float StaminaCost = Weapon->GetStaminaCost(AttackTypeTag);
+		AttributeComponent->DecreaseStamina(StaminaCost);
+		// 攻撃ごとに回復待ちを作り直し、1.5秒後からスタミナを回復する。
+		AttributeComponent->ToggleStaminaRegeneration(true, 1.5f);
+	}
+}
+
+void ARsCharacter::ExecuteComboAttack(const FGameplayTag& AttackTypeTag)
+{
+	if (StateComponent->GetCurrentState() != RsGameplayTags::Character_State_Attacking)
+	{
+		if (bComboSequenceRunning && bCanComboInput == false)
+		{
+			// 攻撃状態の解除後もリセット期限内なら、追加入力で次の段数へ進む。
+			ComboCounter++;
+			UE_LOG(LogTemp, Warning, TEXT("Additional input : Combo Counter = %d"), ComboCounter);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT(">>> ComboSequence Started <<<"));
+			ResetCombo();
+			bComboSequenceRunning = true;
+		}
+
+		DoAttack(AttackTypeTag);
+		// 前の攻撃終了時に予約したリセットで、新しいコンボが途中終了するのを防ぐ。
+		GetWorld()->GetTimerManager().ClearTimer(ComboResetTimerHandle);
+	}
+	else if (bCanComboInput)
+	{
+		// Notify区間内の入力は1回分だけ保持し、区間終了時に消費する。
+		bSavedComboInput = true;
+	}
+}
+
+void ARsCharacter::ResetCombo()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Combo Reset"));
+
+	bComboSequenceRunning = false;
+	bCanComboInput = false;
+	bSavedComboInput = false;
+	ComboCounter = 0;
+}
+
+void ARsCharacter::EnableComboWindow()
+{
+	bCanComboInput = true;
+	UE_LOG(LogTemp, Warning, TEXT("Combo Window Opened: Combo Counter = %d"), ComboCounter);
+}
+
+void ARsCharacter::DisableComboWindow()
+{
+	check(CombatComponent)
+
+	bCanComboInput = false;
+
+	if (bSavedComboInput)
+	{
+		// 予約時の入力種別には切り替えず、直前に実行した攻撃種別の次段を再生する。
+		bSavedComboInput = false;
+		ComboCounter++;
+		UE_LOG(LogTemp, Warning, TEXT("Combo Window Closed: Advancing to next combo = %d"), ComboCounter);
+		DoAttack(CombatComponent->GetLastAttackType());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Combo Window Closed: No input received"));
+	}
+}
+
+void ARsCharacter::AttackFinished(const float ComboResetDelay)
+{
+	UE_LOG(LogTemp, Warning, TEXT("AttackFinished"));
+	if (StateComponent)
+	{
+		// 遅延処理の完了時に移動入力と行動状態をまとめて復帰する。
+		StateComponent->ToggleMovementInput(true);
+	}
+	// Notifyで指定した秒数だけ継続入力を待ち、期限が来たら段数と予約入力を消去する。
+	GetWorld()->GetTimerManager().SetTimer(ComboResetTimerHandle, this, &ThisClass::ResetCombo, ComboResetDelay, false);
 }
