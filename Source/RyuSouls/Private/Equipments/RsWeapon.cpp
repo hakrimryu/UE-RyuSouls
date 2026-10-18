@@ -1,5 +1,8 @@
 #include "Equipments/RsWeapon.h"
 
+#include "Component/RsCombatComponent.h"
+#include "Data/RsMontageActionData.h"
+
 ARsWeapon::ARsWeapon()
 {
 }
@@ -18,13 +21,16 @@ void ARsWeapon::EquipItem()
 
 	if (CombatComponent)
 	{
-		// 以前の武器を落として自身を主武器に登録し、拾得直後は収納用ソケットへ取り付ける。
+		// 以前の武器を落として自身を主武器に登録する。抜刀中の交換では新しい武器も手に持たせる。
 		CombatComponent->SetWeapon(this);
-		AttachToOwner(UnequipSocketName);
+
+		const FName AttachSocket = CombatComponent->IsCombatEnabled() ? EquipSocketName : UnequipSocketName;
+		AttachToOwner(AttachSocket);
 	}
 }
 
-void ARsWeapon::UnEquipItem()
+UAnimMontage* ARsWeapon::GetMontageForTag(const FGameplayTag& Tag, const int32 Index) const
 {
-	Super::UnEquipItem();
+	// 武器BPに割り当てたDataAssetへ検索を委ね、キャラクター側に個別のMontage参照を持たせない。
+	return MontageActionData->GetMontageForTag(Tag, Index);
 }

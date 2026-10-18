@@ -62,6 +62,10 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	URsCombatComponent* CombatComponent;
 
+	// BP_RsCharacterでIA_ToggleCombatを割り当て、Rキーで抜刀・納刀を切り替える。
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	UInputAction* ToggleCombatAction;
+
 protected:
 	// BP_RsCharacterで指定するHUDのクラス。URsPlayerHUDWidgetを継承するWBP_PlayerHUDを割り当てる。
 	UPROPERTY(EditAnywhere, Category = "UI")
@@ -107,6 +111,8 @@ protected:
 
 	// 水平方向に移動し、移動入力による加速度もあるかを調べる。
 	bool IsMoving() const;
+	// 攻撃・ローリング・装備切り替えの状態ではないことを確認する。
+	bool CanToggleCombat() const;
 
 	// 2Dの移動入力を、操作方向を基準にした3D空間の移動入力へ変換する。
 	void Move(const FInputActionValue& Values);
@@ -124,5 +130,8 @@ protected:
 
 	// 専用Object Channelを持つ周囲100cm以内の対象を検出し、インターフェース経由で操作を渡す。
 	void Interact();
+
+	// 主武器の抜刀状態に応じたMontageを再生し、ResetState通知まで次の切り替えを抑止する。
+	void ToggleCombat();
 
 };

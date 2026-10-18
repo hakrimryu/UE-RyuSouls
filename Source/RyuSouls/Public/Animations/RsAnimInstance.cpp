@@ -61,3 +61,12 @@ void URsAnimInstance::AnimNotify_ResetMovementInput()
 		LocalCharacter->GetStateComponent()->ToggleMovementInput(true);
 	}
 }
+
+void URsAnimInstance::AnimNotify_ResetState()
+{
+	// 抜刀・納刀の完了後にGeneralActionを解除し、次のRキー入力を受け付ける。
+	if (ARsCharacter* LocalCharacter = Cast<ARsCharacter>(GetOwningActor()))
+	{
+		LocalCharacter->GetStateComponent()->ClearState();
+	}
+}

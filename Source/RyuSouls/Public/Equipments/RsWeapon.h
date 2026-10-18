@@ -1,9 +1,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Component/RsCombatComponent.h"
 #include "Equipments/RsEquipment.h"
 #include "RsWeapon.generated.h"
+
+class URsMontageActionData;
+class URsCombatComponent;
+struct FGameplayTag;
 
 UCLASS()
 class RYUSOULS_API ARsWeapon : public ARsEquipment
@@ -11,13 +14,17 @@ class RYUSOULS_API ARsWeapon : public ARsEquipment
 	GENERATED_BODY()
 
 protected:
-	// 抜刀時の取り付け先として用意した名前。現在の拾得処理では使わず、手側のソケット名をBPで指定する。
+	// 抜刀時の取り付け先。手側のソケット名を武器BPで指定し、AnimNotifyと抜刀中の拾得で使う。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment | Socket")
 	FName EquipSocketName;
 
-	// 拾得直後の収納先。現在はEquipItemでこのソケットへ取り付け、UnEquipItemはまだ切り替えを行わない。
+	// 納刀時の取り付け先。収納側のソケット名を武器BPで指定し、AnimNotifyと納刀中の拾得で使う。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment | Socket")
 	FName UnequipSocketName;
+
+	// 装備・解除のGameplayTagとMontage群を対応付けるDataAsset。各武器BPで割り当てる。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment | Animation")
+	URsMontageActionData* MontageActionData;
 
 protected:
 	// EquipItemでOwnerから取得し、この武器を主武器として登録するための参照。
@@ -29,9 +36,13 @@ public:
 	ARsWeapon();
 
 public:
-	// OwnerのCombatComponentに自身を登録し、収納用ソケットへ取り付ける。呼び出し前にOwnerを設定する。
+	// Ownerの主武器に登録し、抜刀状態に応じたソケットへ取り付ける。呼び出し前にOwnerを設定する。
 	virtual void EquipItem() override;
 
-	// 装備解除処理の入口。現在は基底処理のみで、参照の解除やソケットの切り替えは未実装。
-	virtual void UnEquipItem() override;
+	// 指定タグのMontage群からIndex番目を返す。通常の装備切り替えでは既定の0番目を使う。
+	UAnimMontage* GetMontageForTag(const FGameplayTag& Tag, const int32 Index = 0) const;
+
+	// AnimNotifyが抜刀・納刀の取り付け先を選ぶためのソケット名。
+	FORCEINLINE FName GetEquipSocketName() const { return EquipSocketName; }
+	FORCEINLINE FName GetUnequipSocketName() const { return UnequipSocketName; }
 };

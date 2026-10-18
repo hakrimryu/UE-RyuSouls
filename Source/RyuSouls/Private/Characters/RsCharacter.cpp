@@ -8,6 +8,7 @@
 #include "Camera/CameraComponent.h"
 #include "Component/RsAttributeComponent.h"
 #include "Component/RsStateComponent.h"
+#include "Equipments/RsWeapon.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Interface/RsInteract.h"
@@ -120,8 +121,10 @@ void ARsCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 		// Startedを使い、キーを押し続けても操作を毎フレーム繰り返さない。
 		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &ThisClass::Interact);
-	}
 
+		// Rキーの押下開始ごとに抜刀・納刀を要求し、長押しによる連続切り替えを防ぐ。
+		EnhancedInputComponent->BindAction(ToggleCombatAction, ETriggerEvent::Started, this, &ThisClass::ToggleCombat);
+	}
 }
 
 bool ARsCharacter::IsMoving() const
@@ -133,6 +136,19 @@ bool ARsCharacter::IsMoving() const
 	}
 
 	return false;
+}
+
+bool ARsCharacter::CanToggleCombat() const
+{
+	check(StateComponent);
+
+	// 攻撃・ローリング・装備切り替えの途中では、新しい抜刀・納刀を開始しない。
+	FGameplayTagContainer CheckTags;
+	CheckTags.AddTag(RsGameplayTags::Character_State_Attacking);
+	CheckTags.AddTag(RsGameplayTags::Character_State_Rolling);
+	CheckTags.AddTag(RsGameplayTags::Character_State_GeneralAction);
+
+	return StateComponent->IsCurrentStateEqualToAny(CheckTags) == false;
 }
 
 void ARsCharacter::Move(const FInputActionValue& Values)
@@ -281,4 +297,32 @@ void ARsCharacter::Interact()
 		}
 	}
 
+}
+
+void ARsCharacter::ToggleCombat()
+{
+	check(CombatComponent);
+	check(StateComponent);
+
+	if (CombatComponent)
+	{
+		if (const ARsWeapon* Weapon = CombatComponent->GetMainWeapon())
+		{
+			if (CanToggleCombat())
+			{
+				// 終端のResetState通知まで再入力を止める。武器の取り付け先は途中のEquip Weapon通知で変更する。
+				StateComponent->SetState(RsGameplayTags::Character_State_GeneralAction);
+
+				// 主武器のDataAssetから現在の抜刀状態に対応する逆側のMontageを取得する。
+				if (CombatComponent->IsCombatEnabled())
+				{
+					PlayAnimMontage(Weapon->GetMontageForTag(RsGameplayTags::Character_Action_Unequip));
+				}
+				else
+				{
+					PlayAnimMontage(Weapon->GetMontageForTag(RsGameplayTags::Character_Action_Equip));
+				}
+			}
+		}
+	}
 }

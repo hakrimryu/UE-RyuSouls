@@ -52,4 +52,8 @@ public:
 	// アニメーションのResetMovementInput通知を受け、移動入力の復帰と行動状態の解除を要求する。
 	UFUNCTION()
 	void AnimNotify_ResetMovementInput();
+
+	// MontageのResetState通知で行動状態だけを解除する。名前で呼ばれるためUFUNCTION登録が必要。
+	UFUNCTION()
+	void AnimNotify_ResetState();
 };
