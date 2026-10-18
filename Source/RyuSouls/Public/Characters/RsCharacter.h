@@ -45,6 +45,10 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* SprintRollingAction;
 
+	// BP_RsCharacterでIA_Interactionを割り当て、Eキーの入力開始時に周囲の対象を調べる。
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* InteractAction;
+
 private:
 	// スプリントとローリングに使うスタミナの残量・消費・回復を管理する。
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
@@ -117,5 +121,8 @@ protected:
 
 	// スタミナが足りる場合に移動入力を制限し、ローリングの再生と状態更新を行う。
 	void Rolling();
+
+	// 専用Object Channelを持つ周囲100cm以内の対象を検出し、インターフェース経由で操作を渡す。
+	void Interact();
 
 };

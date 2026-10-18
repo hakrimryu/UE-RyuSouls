@@ -2,6 +2,7 @@
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "RsDefine.h"
 #include "RsGameplayTags.h"
 #include "Blueprint/UserWidget.h"
 #include "Camera/CameraComponent.h"
@@ -9,7 +10,11 @@
 #include "Component/RsStateComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Interface/RsInteract.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "UI/RsPlayerHUDWidget.h"
+
+class IRsInteract;
 
 ARsCharacter::ARsCharacter()
 {
@@ -112,6 +117,9 @@ void ARsCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		EnhancedInputComponent->BindAction(SprintRollingAction, ETriggerEvent::Completed, this, &ThisClass::StopSprint);
 		// 同じActionのCanceledでローリングを開始する。通知の発生条件は入力アセットのTrigger設定に従う。
 		EnhancedInputComponent->BindAction(SprintRollingAction, ETriggerEvent::Canceled, this, &ThisClass::Rolling);
+
+		// Startedを使い、キーを押し続けても操作を毎フレーム繰り返さない。
+		EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, this, &ThisClass::Interact);
 	}
 
 }
@@ -232,4 +240,45 @@ void ARsCharacter::Rolling()
 		// Montageの終了時刻とは独立して、1.5秒後からスタミナ回復を開始する。
 		AttributeComponent->ToggleStaminaRegeneration(true, 1.5f);
 	}
+}
+
+void ARsCharacter::Interact()
+{
+	FHitResult OutHit;
+	// 始点と終点を同じにし、前方ではなくキャラクター位置を中心とした半径100cmの範囲を調べる。
+	const FVector Start = GetActorLocation();
+	const FVector End = Start;
+	constexpr float Radius = 100.0f;
+
+	// BPのMeshに設定したinteractionだけを対象にし、床などのWorldStaticは検索に含めない。
+	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(COLLISION_OBJECT_INTERACTION));
+
+	TArray<AActor*> ActorsToIgnore;
+
+	// 簡易コリジョンで1件を検出する。末尾のtrueは自身を除外し、デバッグ描画で検索範囲を確認する。
+	bool bHit = UKismetSystemLibrary::SphereTraceSingleForObjects(
+		this,
+		Start,
+		End,
+		Radius,
+		ObjectTypes,
+		false,
+		ActorsToIgnore,
+		EDrawDebugTrace::ForDuration,
+		OutHit,
+		true);
+
+	if (bHit)
+	{
+		if (AActor* HitActor = OutHit.GetActor())
+		{
+			// 専用Channelに属していても、C++のインターフェース未実装なら操作を呼び出さない。
+			if (IRsInteract* Interaction = Cast<IRsInteract>(HitActor))
+			{
+				Interaction->Interact(this);
+			}
+		}
+	}
+
 }
