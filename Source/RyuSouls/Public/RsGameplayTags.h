@@ -10,6 +10,8 @@ namespace RsGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Character_State_Rolling);
 	// 抜刀・納刀の開始からResetState通知まで保持し、装備切り替えの重複を防ぐ。
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Character_State_GeneralAction);
+	// 体力が0以下になったとき、属性コンポーネントが設定する死亡状態。
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Character_State_Death);
 
 	// DataAssetのMontage検索と、AnimNotifyの抜刀・納刀判定で共用するアクションタグ。
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Character_Action_Equip);

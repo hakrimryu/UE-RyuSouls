@@ -7,6 +7,9 @@ namespace RsGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Character_State_Rolling, "Character.State.Rolling");
 	UE_DEFINE_GAMEPLAY_TAG(Character_State_GeneralAction, "Character.State.GeneralAction");
 
+	// 死亡時の状態を、攻撃・ローリングなどと同じ共通タグとして登録する。
+	UE_DEFINE_GAMEPLAY_TAG(Character_State_Death, "Character.State.Death");
+
 	// 行動状態とは別にアクションを識別し、DataAssetとAnimNotifyで同じ名前を使う。
 	UE_DEFINE_GAMEPLAY_TAG(Character_Action_Equip, "Character.Action.Equip");
 	UE_DEFINE_GAMEPLAY_TAG(Character_Action_Unequip, "Character.Action.Unequip");

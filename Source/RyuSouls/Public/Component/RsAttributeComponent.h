@@ -7,8 +7,10 @@
 
 // HUDへ属性種別と残量比率を渡すC++用の通知。複数の購読先へ同じ変更を届ける。
 DECLARE_MULTICAST_DELEGATE_TwoParams(FDelegateOnAttributeChanged, ERsAttributeType, float);
+// 体力が0以下になったことを、所有Actorの死亡処理へ伝えるC++用の通知。
+DECLARE_MULTICAST_DELEGATE(FOnDeath);
 
-// スタミナの残量・消費・タイマーによる自動回復を管理する。
+// スタミナの消費・自動回復と、体力の減算・死亡通知を管理する。
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class RYUSOULS_API URsAttributeComponent : public UActorComponent
 {
@@ -17,6 +19,8 @@ class RYUSOULS_API URsAttributeComponent : public UActorComponent
 public:
 	// 消費・回復後の比率や、HUD初期表示用の現在値を通知する。
 	FDelegateOnAttributeChanged OnAttributeChanged;
+	// 体力が0以下の場合に発火し、敵のRagdollへの切り替えなどを呼び出す。
+	FOnDeath OnDeath;
 
 protected:
 	// 現在のスタミナ残量。消費と回復で更新する。
@@ -30,6 +34,14 @@ protected:
 	// 回復タイマー1回あたりの回復量。間隔は0.1秒なので、既定値では秒あたり2.0回復する。
 	UPROPERTY(EditAnywhere, Category="Stamina")
 	float StaminaRegenRate = 0.2f;
+
+	// 現在の体力。受けたダメージを引き、0からMaxHealthの範囲に制限する。
+	UPROPERTY(EditAnywhere, Category="Health")
+	float BaseHealth = 100.0f;
+
+	// 体力の上限値。敵BPで現在値とともに調整できる。
+	UPROPERTY(EditAnywhere, Category="Health")
+	float MaxHealth = 100.0f;
 
 	// 回復開始待ちと定期回復を同じタイマーで管理するためのハンドル。
 	FTimerHandle StaminaRegenTimerHandle;
@@ -47,6 +59,10 @@ public:
 	// キャラクター側の残量判定や確認用表示で使う読み取り専用の取得関数。
 	FORCEINLINE float GetBaseStamina() const { return BaseStamina; }
 	FORCEINLINE float GetMaxStamina() const { return MaxStamina; }
+	// 被弾後の残量確認などに使う現在の体力。
+	FORCEINLINE float GetBaseHealth() const { return BaseHealth; }
+	// 現在値を制限する体力の上限を返す。
+	FORCEINLINE float GetMaxHealth() const { return MaxHealth; }
 
 	// ゲージ用に現在値 / 最大値を返す。MaxStaminaが正の値であることを前提とする。
 	FORCEINLINE float GetStaminaRatio() const { return BaseStamina / MaxStamina; }
@@ -63,8 +79,10 @@ public:
 	// 指定した属性の比率を購読先へ通知する。値を変更せず、HUD生成直後の初期表示にも使う。
 	void BroadcastAttributeChanged(ERsAttributeType InAttributeType) const;
 
+	// 体力を減らして属性変更を通知し、0以下なら死亡通知とDeathタグの設定を行う。
+	void TakeDamageAmount(float DamageAmount);
+
 private:
 	// 回復タイマーから呼ばれ、1回分を回復する。最大値に達したらタイマーを停止する。
 	void RegenerateStaminaHandler();
-
 };

@@ -1,5 +1,8 @@
 #include "Component/RsAttributeComponent.h"
 
+#include "RsGameplayTags.h"
+#include "Component/RsStateComponent.h"
+
 URsAttributeComponent::URsAttributeComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
@@ -65,6 +68,29 @@ void URsAttributeComponent::BroadcastAttributeChanged(ERsAttributeType InAttribu
 		}
 
 		OnAttributeChanged.Broadcast(InAttributeType, Ratio);
+	}
+}
+
+void URsAttributeComponent::TakeDamageAmount(float DamageAmount)
+{
+	// ダメージ適用後の体力を0から最大値の範囲に収める。
+	BaseHealth = FMath::Clamp(BaseHealth - DamageAmount, 0.0f, MaxHealth);
+
+	// Healthの変更を通知する。比率計算とHUD表示は既存の通知処理に従う。
+	BroadcastAttributeChanged(ERsAttributeType::Health);
+
+	if (BaseHealth <= 0.0f)
+	{
+		// 所有Actorの死亡演出を通知した後、状態コンポーネントがあればDeathを設定する。
+		if (OnDeath.IsBound())
+		{
+			OnDeath.Broadcast();
+		}
+
+		if (URsStateComponent* StateComponent = GetOwner()->FindComponentByClass<URsStateComponent>())
+		{
+			StateComponent->SetState(RsGameplayTags::Character_State_Death);
+		}
 	}
 }
 
