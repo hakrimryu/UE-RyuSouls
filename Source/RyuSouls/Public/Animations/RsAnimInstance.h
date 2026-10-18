@@ -12,37 +12,40 @@ UCLASS()
 class RYUSOULS_API URsAnimInstance : public UAnimInstance
 {
 	GENERATED_BODY()
-	
+
 protected:
 	// このアニメーションを使用するキャラクター。初期化時に所有Actorから取得する。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	ACharacter* Character;
-	
+
 	// 実際の速度・加速度・落下状態を読み取る移動コンポーネント。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	UCharacterMovementComponent* MovementComponent;
-	
+
 protected:
 	// 上下方向を含むワールド空間の移動速度。標準のUE単位ではcm/秒。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement Data")
 	FVector Velocity;
-	
-	// Z成分を除いた水平速度。BS_MoveのSpeed軸に渡して歩行と走行をブレンドする。
+
+	// Z成分を除いた水平速度。移動BlendSpaceのSpeed軸へ渡して待機と移動をブレンドする。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement Data")
 	float GroundSpeed;
-	
+
 	// 水平速度と加速度から求める移動判定。ABPの待機・移動の切り替えと着地からの復帰に使う。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement Data")
 	bool bShouldMove;
-	
+
 	// CharacterMovementが落下モードかどうか。ABPの落下・着地への遷移に使う。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement Data")
 	bool bIsFalling;
 
-	
+	// Actorの正面を基準にした水平移動方向（度）。方向別の戦闘移動BlendSpaceへ渡す。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement Data")
+	float Direction;
+
 public:
 	URsAnimInstance();
-	
+
 	// アニメーションの初期化時に、移動状態を取得するための参照を準備する。
 	virtual void NativeInitializeAnimation() override;
 	// アニメーションの更新ごとに、ABPで使用する移動データを更新する。
