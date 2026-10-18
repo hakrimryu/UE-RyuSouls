@@ -8,6 +8,7 @@
 #include "Camera/CameraComponent.h"
 #include "Component/RsAttributeComponent.h"
 #include "Component/RsStateComponent.h"
+#include "Component/RsTargetingComponent.h"
 #include "Equipments/RsWeapon.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -57,6 +58,9 @@ ARsCharacter::ARsCharacter()
 
 	// 装備側が主武器を登録できるよう、キャラクターごとに保持先を生成する。
 	CombatComponent = CreateDefaultSubobject<URsCombatComponent>(TEXT("Combat"));
+
+	// 対象選択とロック中のカメラ更新を、このキャラクターのコンポーネントに委ねる。
+	TargetingComponent = CreateDefaultSubobject<URsTargetingComponent>(TEXT("Targeting"));
 }
 
 void ARsCharacter::BeginPlay()
@@ -131,6 +135,11 @@ void ARsCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &ThisClass::SpecialAttack);
 		// IA_ShiftとのChord条件を満たした入力開始時に強攻撃を要求する。
 		EnhancedInputComponent->BindAction(HeavyAttackAction, ETriggerEvent::Started, this, &ThisClass::HeavyAttack);
+
+		// 押下開始ごとにロックを切り替え、左右の入力で対象の再選択を要求する。
+		EnhancedInputComponent->BindAction(LockOnTargetAction, ETriggerEvent::Started, this, &ThisClass::LockOnTarget);
+		EnhancedInputComponent->BindAction(LeftTargetAction, ETriggerEvent::Started, this, &ThisClass::LeftTarget);
+		EnhancedInputComponent->BindAction(RightTargetAction, ETriggerEvent::Started, this, &ThisClass::RightTarget);
 	}
 }
 
@@ -226,6 +235,12 @@ void ARsCharacter::Move(const FInputActionValue& Values)
 
 void ARsCharacter::Look(const FInputActionValue& Values)
 {
+	// ロック中の視点は対象への自動追従に任せ、手動の視点入力は受け付けない。
+	if (TargetingComponent && TargetingComponent->IsLockOn())
+	{
+		return;
+	}
+
 	// 視点用Actionの2D値。Yの正負や感度はMapping ContextのModifierなどの設定にも左右される。
 	FVector2D LookDirection = Values.Get<FVector2D>();
 
@@ -403,6 +418,21 @@ void ARsCharacter::HeavyAttack()
 	{
 		ExecuteComboAttack(AttackTypeTag);
 	}
+}
+
+void ARsCharacter::LockOnTarget()
+{
+	TargetingComponent->ToggleLockOn();
+}
+
+void ARsCharacter::LeftTarget()
+{
+	TargetingComponent->SwitchingLockedOnActor(ESwitchingDirection::Left);
+}
+
+void ARsCharacter::RightTarget()
+{
+	TargetingComponent->SwitchingLockedOnActor(ESwitchingDirection::Right);
 }
 
 FGameplayTag ARsCharacter::GetAttackPerform() const

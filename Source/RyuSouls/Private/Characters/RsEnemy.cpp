@@ -1,10 +1,12 @@
 #include "Characters/RsEnemy.h"
 
 #include "RsDefine.h"
-#include "GameplayTagContainer.h"
+#include "RsGameplayTags.h"
 #include "Component/RsAttributeComponent.h"
 #include "Component/RsStateComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SphereComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Engine/DamageEvents.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -13,6 +15,21 @@
 ARsEnemy::ARsEnemy()
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	// 候補の球検索用Object Typeを設定し、カメラからのVisibilityトレースだけをBlockする。
+	TargetingSphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("TargetingSphere"));
+	TargetingSphereComponent->SetupAttachment(GetRootComponent());
+	TargetingSphereComponent->SetCollisionObjectType(COLLISION_OBJECT_TARGETING);
+	TargetingSphereComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
+	TargetingSphereComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+
+	// ロック対象の表示を原点から50cm上に置く。描画サイズ30×30の画面空間Widgetを既定で隠す。
+	LockOnWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("LockOnWidgetComponent"));
+	LockOnWidgetComponent->SetupAttachment(GetRootComponent());
+	LockOnWidgetComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 50.0f));
+	LockOnWidgetComponent->SetDrawSize(FVector2D(30.0f, 30.0f));
+	LockOnWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	LockOnWidgetComponent->SetVisibility(false);
 
 	// カメラのトレースを敵のカプセルとメッシュで遮らないようにする。
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
@@ -161,4 +178,25 @@ UAnimMontage* ARsEnemy::GetHitReactAnimation(const AActor* Attacker) const
 	}
 
 	return SelectedMontage;
+}
+
+void ARsEnemy::OnTargeted(bool bTargeted)
+{
+	if (LockOnWidgetComponent)
+	{
+		LockOnWidgetComponent->SetVisibility(bTargeted);
+	}
+}
+
+bool ARsEnemy::CanBeTargeted()
+{
+	if (!StateComponent)
+	{
+		return false;
+	}
+
+	FGameplayTagContainer TagCheck;
+	TagCheck.AddTag(RsGameplayTags::Character_State_Death);
+
+	return StateComponent->IsCurrentStateEqualToAny(TagCheck) == false;
 }

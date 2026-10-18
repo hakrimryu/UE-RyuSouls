@@ -5,6 +5,7 @@
 #include "GameFramework/Character.h"
 #include "RsCharacter.generated.h"
 
+class URsTargetingComponent;
 struct FInputActionValue;
 class USpringArmComponent;
 class UCameraComponent;
@@ -45,7 +46,7 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* SprintRollingAction;
 
-	// BP_RsCharacterでIA_Interactionを割り当て、Eキーの入力開始時に周囲の対象を調べる。
+	// BP_RsCharacterでIA_Interactionを割り当て、Fキーの入力開始時に周囲の対象を調べる。
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* InteractAction;
 
@@ -61,6 +62,18 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* HeavyAttackAction;
 
+	// BPでIA_LockOnを割り当て、入力開始時にロックの開始・解除を切り替える。
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* LockOnTargetAction;
+
+	// BPで割り当てた入力から、カメラの左側にある別のロック対象を探す。
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* LeftTargetAction;
+
+	// BPで割り当てた入力から、カメラの右側にある別のロック対象を探す。
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* RightTargetAction;
+
 private:
 	// スプリントとローリングに使うスタミナの残量・消費・回復を管理する。
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
@@ -73,6 +86,10 @@ private:
 	// このキャラクターが装備する主武器の参照を保持する。
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	URsCombatComponent* CombatComponent;
+
+	// ロック候補の検索・対象の切り替え・カメラと旋回方式を管理する。
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	URsTargetingComponent* TargetingComponent;
 
 protected:
 	// BP_RsCharacterで指定するHUDのクラス。URsPlayerHUDWidgetを継承するWBP_PlayerHUDを割り当てる。
@@ -177,6 +194,13 @@ protected:
 
 	// 強攻撃を要求する。納刀中なら先に抜刀を開始する。
 	void HeavyAttack();
+
+	// ロック状態の開始・解除をTargetingComponentへ要求する。
+	void LockOnTarget();
+	// 現在の対象から、カメラ基準で左の候補へ切り替える。
+	void LeftTarget();
+	// 現在の対象から、カメラ基準で右の候補へ切り替える。
+	void RightTarget();
 
 protected:
 	// スプリント状態に応じて通常攻撃か走行攻撃のタグを返す。
