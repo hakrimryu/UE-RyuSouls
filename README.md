@@ -8,9 +8,9 @@
 
 ## プレイ動画
 
-[![RyuSoulsのプレイ動画 — 画像をクリックすると動画ファイルを開きます。](docs/media/gameplay-preview.jpg)](docs/media/RyuSouls-gameplay.mp4)
+https://github.com/user-attachments/assets/ffb0f9ec-0d9f-4f82-bbb9-044d2c4366ad
 
-**[プレイ動画を見る / ダウンロード](docs/media/RyuSouls-gameplay.mp4)** · 約26秒 · MP4 · 8.86 MB
+**[動画ファイルをダウンロード](docs/media/RyuSouls-gameplay.mp4)** · 約26秒 · MP4 · 8.86 MB
 
 開発用マップで撮影した、現在の実装を紹介する動画です。画面には開発中のUIとデバッグ表示が含まれています。
 
