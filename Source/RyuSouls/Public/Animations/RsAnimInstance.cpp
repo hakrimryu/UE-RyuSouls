@@ -21,6 +21,12 @@ void URsAnimInstance::NativeInitializeAnimation()
 	{
 		// 以降の更新で速度や落下状態を取得できるよう、移動コンポーネントを保持する。
 		MovementComponent = Character->GetCharacterMovement();
+
+		// AnimNotifyで変わる抜刀状態をAnimGraphへ反映するため、戦闘コンポーネントの通知を購読する。
+		if (URsCombatComponent* CombatComponent = Character->GetComponentByClass<URsCombatComponent>())
+		{
+			CombatComponent->OnChangedCombat.AddUObject(this, &ThisClass::OnChangedCombat);
+		}
 	}
 }
 
@@ -73,4 +79,16 @@ void URsAnimInstance::AnimNotify_ResetState()
 	{
 		LocalCharacter->GetStateComponent()->ClearState();
 	}
+}
+
+void URsAnimInstance::UpdateCombatMode(const ECombatType InCombatType)
+{
+	// 武器BPで指定された種別を保持し、AnimGraph側の戦闘アニメーション分岐に渡す。
+	CombatType = InCombatType;
+}
+
+void URsAnimInstance::OnChangedCombat(const bool bInCombatEnabled)
+{
+	// 装備切り替えMontageのNotify時点に合わせて、戦闘姿勢への遷移条件を更新する。
+	bCombatEnabled = bInCombatEnabled;
 }

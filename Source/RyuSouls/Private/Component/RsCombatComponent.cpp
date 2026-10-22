@@ -52,3 +52,14 @@ void URsCombatComponent::SetWeapon(ARsWeapon* NewWeapon)
 	// 武器から渡された参照を保持し、取り付け処理は装備側に任せる。
 	MainWeapon = NewWeapon;
 }
+
+void URsCombatComponent::SetCombatEnabled(const bool bEnabled)
+{
+	bCombatEnabled = bEnabled;
+
+	// AnimNotifyで確定した状態を、その値を使うAnimInstanceへ即座に反映する。
+	if (OnChangedCombat.IsBound())
+	{
+		OnChangedCombat.Broadcast(bCombatEnabled);
+	}
+}

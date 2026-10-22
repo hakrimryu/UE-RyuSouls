@@ -31,3 +31,13 @@ enum class ESwitchingDirection : uint8
 	Left,
 	Right,
 };
+
+// 装備中の武器種別。AnimInstanceが対応する戦闘用BlendSpaceを選ぶために使う。
+UENUM(BlueprintType)
+enum class ECombatType : uint8
+{
+	None,
+	SwordShield,
+	TwoHanded,
+	MeleeFists
+};

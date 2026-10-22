@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "RsDefine.h"
 #include "Equipments/RsEquipment.h"
 #include "RsWeapon.generated.h"
 
@@ -23,6 +24,10 @@ protected:
 	// 納刀時の取り付け先。収納側のソケット名を武器BPで指定し、AnimNotifyと納刀中の拾得で使う。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment | Socket")
 	FName UnequipSocketName;
+
+	// この武器に対応する戦闘アニメーション種別。装備時にAnimInstanceへ渡す。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment")
+	ECombatType CombatType = ECombatType::SwordShield;
 
 	// 装備・解除のGameplayTagとMontage群を対応付けるDataAsset。各武器BPで割り当てる。
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment | Animation")
@@ -72,6 +77,8 @@ public:
 	FORCEINLINE FName GetUnequipSocketName() const { return UnequipSocketName; }
 	// Weapon CollisionのAnimNotifyStateがトレースの開始・停止に使う参照。
 	FORCEINLINE URsWeaponCollisionComponent* GetCollision() const { return WeaponCollision; };
+	// 装備時にAnimInstanceへ渡す、この武器の戦闘アニメーション種別。
+	FORCEINLINE ECombatType GetCombatType() const { return CombatType; };
 
 public:
 	// 命中イベントを受け取り、相手へ武器を加害元とするPointDamageを渡す。

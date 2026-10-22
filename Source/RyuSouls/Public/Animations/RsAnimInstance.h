@@ -2,6 +2,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "RsDefine.h"
 #include "Animation/AnimInstance.h"
 #include "RsAnimInstance.generated.h"
 
@@ -43,6 +44,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement Data")
 	float Direction;
 
+protected:
+	// AnimNotifyで更新された抜刀状態。AnimGraphの非戦闘・戦闘遷移条件に使う。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat Data")
+	bool bCombatEnabled = false;
+
+	// 現在の武器種別。AnimGraphで剣盾・両手武器などの戦闘アニメーションを選ぶ。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat Data")
+	ECombatType CombatType = ECombatType::None;
+
 public:
 	URsAnimInstance();
 
@@ -59,4 +69,12 @@ public:
 	// MontageのResetState通知で行動状態だけを解除する。名前で呼ばれるためUFUNCTION登録が必要。
 	UFUNCTION()
 	void AnimNotify_ResetState();
+
+public:
+	// 装備した武器の種別を受け取り、AnimGraphが使用する戦闘アニメーションを切り替える。
+	void UpdateCombatMode(const ECombatType InCombatType);
+
+protected:
+	// CombatComponentの通知を受け、AnimGraphへ公開する抜刀状態を同期する。
+	void OnChangedCombat(const bool bInCombatEnabled);
 };

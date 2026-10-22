@@ -7,11 +7,18 @@
 
 class ARsWeapon;
 
+// AnimNotifyで確定した抜刀状態をAnimInstanceなどの購読先へ通知する。
+DECLARE_MULTICAST_DELEGATE_OneParam(FDelegateOnChangedCombat, bool);
+
 // キャラクターの主武器を保持し、交換時には以前の武器をPickupとしてワールドへ戻す。
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class RYUSOULS_API URsCombatComponent : public UActorComponent
 {
 	GENERATED_BODY()
+
+public:
+	// 抜刀状態と連動するアニメーション側が初期化時に登録する変更通知。
+	FDelegateOnChangedCombat OnChangedCombat;
 
 protected:
 	// 装備側のSetWeapon呼び出しで登録される主武器。UPROPERTYで参照をGCに追跡させる。
@@ -42,8 +49,8 @@ public:
 public:
 	// Montageの選択と武器交換時に参照する抜刀状態。
 	FORCEINLINE bool IsCombatEnabled() const { return bCombatEnabled; }
-	// AnimNotifyの切り替え時点で状態を更新する。ソケットへの取り付けは通知側が続けて行う。
-	FORCEINLINE void SetCombatEnabled(bool bEnabled) { bCombatEnabled = bEnabled; }
+	// 抜刀状態を更新し、AnimInstanceへ戦闘・非戦闘の遷移を通知する。
+	void SetCombatEnabled(const bool bEnabled);
 
 	// キャラクターのMontage選択とAnimNotifyの取り付け処理で使う現在の主武器。
 	FORCEINLINE ARsWeapon* GetMainWeapon() const { return MainWeapon; }

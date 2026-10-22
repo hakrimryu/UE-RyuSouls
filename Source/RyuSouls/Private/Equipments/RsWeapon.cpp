@@ -1,6 +1,8 @@
 #include "Equipments/RsWeapon.h"
 
 #include "RsGameplayTags.h"
+#include "Animations/RsAnimInstance.h"
+#include "Characters/RsCharacter.h"
 #include "Component/RsCombatComponent.h"
 #include "Component/RsWeaponCollisionComponent.h"
 #include "Data/RsMontageActionData.h"
@@ -46,6 +48,15 @@ void ARsWeapon::EquipItem()
 
 		// 装備の表示メッシュをソケット位置の取得元として登録する。
 		WeaponCollision->SetWeaponMesh(Mesh);
+
+		// 武器BPの種別をAnimInstanceへ渡し、装備中の戦闘用BlendSpaceを選択させる。
+		if (ARsCharacter* OwnerCharacter = Cast<ARsCharacter>(GetOwner()))
+		{
+			if (URsAnimInstance* Anim = Cast<URsAnimInstance>(OwnerCharacter->GetMesh()->GetAnimInstance()))
+			{
+				Anim->UpdateCombatMode(CombatType);
+			}
+		}
 
 		// 武器自身に加え、所有キャラクターにも自分の攻撃が命中しないよう検索から除外する。
 		WeaponCollision->AddIgnoredActor(GetOwner());
