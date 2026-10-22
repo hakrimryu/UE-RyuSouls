@@ -11,8 +11,12 @@
 ARsWeapon::ARsWeapon()
 {
 	// 命中判定を武器ごとに保持し、検出結果をこの武器のダメージ処理へ接続する。
-	WeaponCollision = CreateDefaultSubobject<URsWeaponCollisionComponent>("WeaponCollision");
+	WeaponCollision = CreateDefaultSubobject<URsWeaponCollisionComponent>("MainCollision");
 	WeaponCollision->OnHitActor.AddUObject(this, &ThisClass::OnHitActor);
+
+	// 複数の攻撃判定を持つ武器向けに、主判定とは独立して切り替えられる判定を用意する。
+	SecondWeaponCollision = CreateDefaultSubobject<URsWeaponCollisionComponent>("SecondCollision");
+	SecondWeaponCollision->OnHitActor.AddUObject(this, &ThisClass::OnHitActor);
 
 	// 攻撃1回あたりの消費量。実行可否の確認と再生開始時の消費に同じ値を使う。
 	StaminaCostMap.Add(RsGameplayTags::Character_Attack_Light, 7.0f);
@@ -114,4 +118,33 @@ void ARsWeapon::OnHitActor(const FHitResult& Hit)
 		GetOwner()->GetInstigatorController(),
 		this,
 		nullptr);
+}
+
+
+void ARsWeapon::ActiveCollision(EWeaponCollisionType InCollisionType)
+{
+	switch (InCollisionType)
+	{
+	case EWeaponCollisionType::MainCollision:
+		WeaponCollision->TurnOnCollision();
+		break;
+
+	case EWeaponCollisionType::SecondCollision:
+		SecondWeaponCollision->TurnOnCollision();
+		break;
+	}
+}
+
+void ARsWeapon::DeactivateCollision(EWeaponCollisionType InCollisionType)
+{
+	switch (InCollisionType)
+	{
+	case EWeaponCollisionType::MainCollision:
+		WeaponCollision->TurnOffCollision();
+		break;
+
+	case EWeaponCollisionType::SecondCollision:
+		SecondWeaponCollision->TurnOffCollision();
+		break;
+	}
 }

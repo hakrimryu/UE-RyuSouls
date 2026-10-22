@@ -38,6 +38,10 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	URsWeaponCollisionComponent* WeaponCollision;
 
+	// 両手・二刀武器など、主判定とは別にNotifyから切り替える補助当たり判定。
+	UPROPERTY(VisibleAnywhere)
+	URsWeaponCollisionComponent* SecondWeaponCollision;
+
 protected:
 	// EquipItemでOwnerから取得し、この武器を主武器として登録するための参照。
 	UPROPERTY()
@@ -79,6 +83,12 @@ public:
 	FORCEINLINE URsWeaponCollisionComponent* GetCollision() const { return WeaponCollision; };
 	// 装備時にAnimInstanceへ渡す、この武器の戦闘アニメーション種別。
 	FORCEINLINE ECombatType GetCombatType() const { return CombatType; };
+
+public:
+	// 指定された主・補助当たり判定の攻撃区間を開始する。
+	virtual void ActiveCollision(EWeaponCollisionType InCollisionType);
+	// 指定された主・補助当たり判定の攻撃区間を終了する。
+	virtual void DeactivateCollision(EWeaponCollisionType InCollisionType);
 
 public:
 	// 命中イベントを受け取り、相手へ武器を加害元とするPointDamageを渡す。

@@ -41,3 +41,11 @@ enum class ECombatType : uint8
 	TwoHanded,
 	MeleeFists
 };
+
+// AnimNotifyStateが有効・無効を切り替える武器側の当たり判定を識別する。
+UENUM(BlueprintType)
+enum class EWeaponCollisionType : uint8
+{
+	MainCollision,
+	SecondCollision,
+};
