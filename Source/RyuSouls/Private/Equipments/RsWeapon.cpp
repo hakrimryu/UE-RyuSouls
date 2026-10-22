@@ -121,7 +121,7 @@ void ARsWeapon::OnHitActor(const FHitResult& Hit)
 }
 
 
-void ARsWeapon::ActiveCollision(EWeaponCollisionType InCollisionType)
+void ARsWeapon::ActivateCollision(EWeaponCollisionType InCollisionType)
 {
 	switch (InCollisionType)
 	{

@@ -86,7 +86,7 @@ public:
 
 public:
 	// 指定された主・補助当たり判定の攻撃区間を開始する。
-	virtual void ActiveCollision(EWeaponCollisionType InCollisionType);
+	virtual void ActivateCollision(EWeaponCollisionType InCollisionType);
 	// 指定された主・補助当たり判定の攻撃区間を終了する。
 	virtual void DeactivateCollision(EWeaponCollisionType InCollisionType);
 

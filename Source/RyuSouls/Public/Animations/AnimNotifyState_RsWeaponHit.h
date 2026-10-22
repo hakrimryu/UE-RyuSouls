@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "RsDefine.h"
 #include "Animation/AnimNotifies/AnimNotifyState.h"
 #include "AnimNotifyState_RsWeaponHit.generated.h"
 
@@ -10,10 +11,15 @@ class RYUSOULS_API UAnimNotifyState_RsWeaponHit : public UAnimNotifyState
 {
 	GENERATED_BODY()
 
+protected:
+	// Montageごとに主・補助のどちらの当たり判定を切り替えるか指定する。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EWeaponCollisionType CollisionType = EWeaponCollisionType::MainCollision;
+
 public:
 	UAnimNotifyState_RsWeaponHit(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
-	// 区間開始時に主武器の命中履歴を消去し、トレースを開始する。
+	// 区間開始時に指定した武器判定の命中履歴を消去し、トレースを開始する。
 	virtual void NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference) override;
-	// 区間終了時に主武器のトレースを停止する。
+	// 区間終了時に指定した武器判定のトレースを停止する。
 	virtual void NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
 };

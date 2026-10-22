@@ -76,6 +76,15 @@ void ARsCharacter::BeginPlay()
 			PlayerHUDWidget->AddToViewport();
 		}
 	}
+
+	// BPで指定した素手武器を生成し、初期状態から攻撃できる主武器として装備する。
+	if (FistWeaponClass)
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		ARsFistWeapon* FistWeapon = GetWorld()->SpawnActor<ARsFistWeapon>(FistWeaponClass, GetActorTransform(), SpawnParams);
+		FistWeapon->EquipItem();
+	}
 }
 
 void ARsCharacter::Tick(float DeltaTime)
@@ -157,6 +166,18 @@ bool ARsCharacter::IsMoving() const
 bool ARsCharacter::CanToggleCombat() const
 {
 	check(StateComponent);
+
+	// 主武器がない状態では、切り替え用Montageとソケットを参照できない。
+	if (IsValid(CombatComponent->GetMainWeapon()) == false)
+	{
+		return false;
+	}
+
+	// 素手は生成時から戦闘状態を維持し、抜刀・納刀を行わない。
+	if (CombatComponent->GetMainWeapon()->GetCombatType() == ECombatType::MeleeFists)
+	{
+		return false;
+	}
 
 	// 攻撃・ローリング・装備切り替えの途中では、新しい抜刀・納刀を開始しない。
 	FGameplayTagContainer CheckTags;
@@ -551,4 +572,20 @@ void ARsCharacter::AttackFinished(const float ComboResetDelay)
 	}
 	// Notifyで指定した秒数だけ継続入力を待ち、期限が来たら段数と予約入力を消去する。
 	GetWorld()->GetTimerManager().SetTimer(ComboResetTimerHandle, this, &ThisClass::ResetCombo, ComboResetDelay, false);
+}
+
+void ARsCharacter::ActivateWeaponCollision(EWeaponCollisionType WeaponCollisionType)
+{
+	if (CombatComponent)
+	{
+		CombatComponent->GetMainWeapon()->ActivateCollision(WeaponCollisionType);
+	}
+}
+
+void ARsCharacter::DeactivateWeaponCollision(EWeaponCollisionType WeaponCollisionType)
+{
+	if (CombatComponent)
+	{
+		CombatComponent->GetMainWeapon()->DeactivateCollision(WeaponCollisionType);
+	}
 }

@@ -2,7 +2,9 @@
 
 #include "CoreMinimal.h"
 #include "Component/RsCombatComponent.h"
+#include "Equipments/RsFistWeapon.h"
 #include "GameFramework/Character.h"
+#include "Interface/RsCombatInterface.h"
 #include "RsCharacter.generated.h"
 
 class URsTargetingComponent;
@@ -16,7 +18,7 @@ class URsPlayerHUDWidget;
 class URsStateComponent;
 
 UCLASS()
-class RYUSOULS_API ARsCharacter : public ACharacter
+class RYUSOULS_API ARsCharacter : public ACharacter, public IRsCombatInterface
 {
 	GENERATED_BODY()
 
@@ -99,6 +101,11 @@ protected:
 	// 開始時に生成して画面へ追加するHUD。UPROPERTYで参照を保持してGCの対象から保護する。
 	UPROPERTY()
 	URsPlayerHUDWidget* PlayerHUDWidget;
+
+protected:
+	// BPで指定する素手用の武器クラス。開始時に生成し、主武器として装備する。
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<ARsFistWeapon> FistWeaponClass;
 
 protected:
 	// スプリント時にCharacterMovementへ設定する速度上限（cm/秒）。BPで調整できる。
@@ -222,4 +229,10 @@ public:
 	void DisableComboWindow();
 	// AttackFinished通知から移動復帰を要求し、ComboResetDelay秒後にコンボをリセットする。
 	void AttackFinished(const float ComboResetDelay);
+
+public:
+	// Notifyから指定された主・補助判定を、現在の主武器で開始する。
+	virtual void ActivateWeaponCollision(EWeaponCollisionType WeaponCollisionType) override;
+	// Notifyから指定された主・補助判定を、現在の主武器で停止する。
+	virtual void DeactivateWeaponCollision(EWeaponCollisionType WeaponCollisionType) override;
 };

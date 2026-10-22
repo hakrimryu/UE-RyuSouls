@@ -3,6 +3,7 @@
 #include "Component/RsCombatComponent.h"
 #include "Component/RsWeaponCollisionComponent.h"
 #include "Equipments/RsWeapon.h"
+#include "Interface/RsCombatInterface.h"
 
 UAnimNotifyState_RsWeaponHit::UAnimNotifyState_RsWeaponHit(const FObjectInitializer& ObjectInitializer)
 {
@@ -13,16 +14,12 @@ void UAnimNotifyState_RsWeaponHit::NotifyBegin(USkeletalMeshComponent* MeshComp,
 {
 	Super::NotifyBegin(MeshComp, Animation, TotalDuration, EventReference);
 
-	// プレビュー用Actorなどを除外し、CombatComponentに登録された有効な主武器だけを操作する。
-	if (const AActor* OwnerActor = MeshComp->GetOwner())
+	// 装備形態ごとの判定選択はOwnerへ委ね、Notifyを特定の武器実装から分離する。
+	if (AActor* OwnerActor = MeshComp->GetOwner())
 	{
-		if (const URsCombatComponent* CombatComponent = OwnerActor->GetComponentByClass<URsCombatComponent>())
+		if (IRsCombatInterface* CombatInterface = Cast<IRsCombatInterface>(OwnerActor))
 		{
-			const ARsWeapon* Weapon = CombatComponent->GetMainWeapon();
-			if (::IsValid(Weapon))
-			{
-				Weapon->GetCollision()->TurnOnCollision();
-			}
+			CombatInterface->ActivateWeaponCollision(CollisionType);
 		}
 	}
 }
@@ -32,16 +29,12 @@ void UAnimNotifyState_RsWeaponHit::NotifyEnd(USkeletalMeshComponent* MeshComp, U
 {
 	Super::NotifyEnd(MeshComp, Animation, EventReference);
 
-	// 終了時点の主武器を取得して判定を止め、攻撃区間外の命中通知を抑止する。
-	if (const AActor* OwnerActor = MeshComp->GetOwner())
+	// 開始時と同じ判定種別をOwnerへ渡し、攻撃区間外のトレースを停止する。
+	if (AActor* OwnerActor = MeshComp->GetOwner())
 	{
-		if (const URsCombatComponent* CombatComponent = OwnerActor->GetComponentByClass<URsCombatComponent>())
+		if (IRsCombatInterface* CombatInterface = Cast<IRsCombatInterface>(OwnerActor))
 		{
-			const ARsWeapon* Weapon = CombatComponent->GetMainWeapon();
-			if (::IsValid(Weapon))
-			{
-				Weapon->GetCollision()->TurnOffCollision();
-			}
+			CombatInterface->DeactivateWeaponCollision(CollisionType);
 		}
 	}
 }
